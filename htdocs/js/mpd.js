@@ -322,12 +322,11 @@ function webSocketConnect() {
                                 var $button = app.parentDir.find('td:first .folder-expand');
                                 var $icon = app.parentDir.find('td:first .glyphicon-plus-sign');
                                 $button.removeClass('folder-expand').addClass('folder-collapse');
-                                $icon.removeClass('glyphicon-plus-sign').addClass('glyphicon-minus-class');
-                                app.parentDir.addClass('expanded');
+                                $icon.removeClass('glyphicon-plus-sign').addClass('glyphicon-minus-sign');
                             }
                             firstChild = false;
                             parentURI = app.parentDir.attr('uri');
-                            return $row.insertAfter(app.parentFolder);
+                            return $row.insertAfter(app.parentDir);
                         };
                         addRow = addToParentDir;
                     }
@@ -444,12 +443,12 @@ function webSocketConnect() {
                                     if($target.hasClass("folder-expand") || $target.parent().hasClass("folder-expand")) {
                                         app.parentDir = $row;
                                         socket.send('MPD_API_GET_BROWSE,'+pagination+','+(browsepath ? decodeURI(browsepath) : "/"));
+                                    }
                                     else if($target.hasClass("folder-collapse") || $target.parent().hasClass("folder-collapse")) {
                                         // remove all rows whose parent is the one clicked
                                         var $children = $("#salamisandwich > tbody").find("tr[data-parent='" + $row.attr("uri") + "']");
                                         $children.remove();
                                         // then cleanup "nested state"
-                                        app.parentDir.removeClass('expanded')
                                         app.parentDir = null;
                                     } else {
                                         // click outside the expand/collapse button navigates to dir
