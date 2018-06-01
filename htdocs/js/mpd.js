@@ -309,9 +309,29 @@ function webSocketConnect() {
                     if ($('#salamisandwich > tbody').is(':ui-sortable')) {
                         $('#salamisandwich > tbody').sortable('destroy');
                     }
-                    var addToSalamiSandwich = $('#salamisandwich > tbody').append.bind($('#salamisandwich > tbody'));
-                    var addToParentFolder = function(row) { $(row).insertAfter(app.parentFolder); };
-                    var addRow = (app.parentFolder) ? addToParentFolder : addToSalamiSandwich;
+                    var addToSalamiSandwich = function(row) {
+                        return $('#salamisandwich > tbody').append(row);
+                    }
+                    var addRow = addToSalamiSandwich;
+                    var parentURI = '';
+                    if(app.parentDir) {
+                        var firstChild = true;
+                        var addToParentDir = function(row) {
+                            var $row = $(row);
+                            if(firstChild) {
+                                var $button = app.parentDir.find('td:first .folder-expand');
+                                var $icon = app.parentDir.find('td:first .glyphicon-plus-sign');
+                                $button.removeClass('folder-expand').addClass('folder-collapse');
+                                $icon.removeClass('glyphicon-plus-sign').addClass('glyphicon-minus-class');
+                                app.parentDir.addClass('expanded');
+                            }
+                            firstChild = false;
+                            parentURI = app.parentDir.attr('uri');
+                            return $row.insertAfter(app.parentFolder);
+                        };
+                        addRow = addToParentDir;
+                    }
+
                     for (var item in obj.data) {
                         switch(obj.data[item].type) {
                             case 'directory':
@@ -326,7 +346,7 @@ function webSocketConnect() {
                                         clazz += ' hide';
                                     }
                                 }
-                                var folderRow = "<tr uri=\"" + encodeURI(obj.data[item].dir) + "\" class=\"" + clazz + "\">" +
+                                var folderRow = "<tr uri=\"" + encodeURI(obj.data[item].dir) + "\" class=\"" + clazz + "\" data-parent=\"" + parentURI + "\">" +
                                                 "<td><button type='button' class='btn btn-link folder-expand'><span class=\"glyphicon glyphicon-plus-sign\"></span><span class=\"glyphicon glyphicon-folder-open\"></span></button></td>" +
                                                 "<td colspan=\"2\"><a>" + basename(obj.data[item].dir) + "</a></td>" +
                                                 "<td></td><td></td></tr>";
@@ -338,7 +358,7 @@ function webSocketConnect() {
                                     clazz += ' hide';
                                 }
                                 addRow(
-                                    "<tr uri=\"" + encodeURI(obj.data[item].plist) + "\" class=\"" + clazz + "\">" +
+                                    "<tr uri=\"" + encodeURI(obj.data[item].plist) + "\" class=\"" + clazz + "\" data-parent=\"" + parentURI + "\">" +
                                     "<td><span class=\"glyphicon glyphicon-list\"></span></td>" +
                                     "<td colspan=\"2\"><a>" + basename(obj.data[item].plist) + "</a></td>" +
                                     "<td></td><td></td></tr>"
@@ -354,8 +374,8 @@ function webSocketConnect() {
                                     var details = "<td>" + obj.data[item].artist + "<br /><span>" + obj.data[item].album + "</span></td><td>" + obj.data[item].title + "</td>";
                                 }
 
-				                        addRow(
-                                    "<tr uri=\"" + encodeURI(obj.data[item].uri) + "\" class=\"song\">" +
+                                addRow(
+                                    "<tr uri=\"" + encodeURI(obj.data[item].uri) + "\" class=\"song\" data-parent=\"" + parentURI + "\">" +
                                     "<td><span class=\"glyphicon glyphicon-music\"></span></td>" + details +
                                     "<td>" + minutes + ":" + (seconds < 10 ? '0' : '') + seconds +
                                     "</td><td></td></tr>"
@@ -378,8 +398,8 @@ function webSocketConnect() {
                             $('#prev').removeClass('hide');
 
                     }
-                    if(app.parentFolder) {
-                        app.parentFolder = null;
+                    if(app.parentDir) {
+                        app.parentDir = null;
                     }
 
                     function appendClickableIcon(appendTo, onClickAction, glyphicon) {
@@ -389,10 +409,11 @@ function webSocketConnect() {
                             .find('a').click(function(e) {
                                 e.stopPropagation();
                                 socket.send(onClickAction + "," + decodeURI($(this).parents("tr").attr("uri")));
-                            $('.top-right').notify({
-                                message:{
-                                    text: "\"" + $('td:nth-last-child(3)', $(this).parents("tr")).text() + "\" added"
-                                } }).show();
+                                $('.top-right').notify({
+                                    message:{
+                                        text: "\"" + $('td:nth-last-child(3)', $(this).parents("tr")).text() + "\" added"
+                                    }
+                                }).show();
                             }).fadeTo('fast',1);
                     }
 
@@ -419,10 +440,19 @@ function webSocketConnect() {
                                     pagination = 0;
                                     browsepath = $(this).attr("uri");
                                     var $target = $(e.target);
+                                    var $row = $target.closest('tr')
                                     if($target.hasClass("folder-expand") || $target.parent().hasClass("folder-expand")) {
-                                        app.parentFolder = $target.closest('tr');
+                                        app.parentDir = $row;
                                         socket.send('MPD_API_GET_BROWSE,'+pagination+','+(browsepath ? decodeURI(browsepath) : "/"));
+                                    else if($target.hasClass("folder-collapse") || $target.parent().hasClass("folder-collapse")) {
+                                        // remove all rows whose parent is the one clicked
+                                        var $children = $("#salamisandwich > tbody").find("tr[data-parent='" + $row.attr("uri") + "']");
+                                        $children.remove();
+                                        // then cleanup "nested state"
+                                        app.parentDir.removeClass('expanded')
+                                        app.parentDir = null;
                                     } else {
+                                        // click outside the expand/collapse button navigates to dir
                                         $("#browse > a").attr("href", '#/browse/'+pagination+'/'+browsepath);
                                         app.setLocation('#/browse/'+pagination+'/'+browsepath);
                                     }
