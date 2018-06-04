@@ -315,20 +315,17 @@ function webSocketConnect() {
                     var addRow = addToSalamiSandwich;
                     var parentURI = '';
                     if(app.parentDir) {
+                        var insertAfter = app.parentDir;
                         var firstChild = true;
-                        var addToParentDir = function(row) {
+                        parentURI = app.parentDir.attr('uri');
+                        addRow = function addToParentDir(row) {
                             var $row = $(row);
+                            $row.insertAfter(insertAfter);
+                            insertAfter = $row;
                             if(firstChild) {
-                                var $button = app.parentDir.find('td:first .folder-expand');
-                                var $icon = app.parentDir.find('td:first .glyphicon-plus-sign');
-                                $button.removeClass('folder-expand').addClass('folder-collapse');
-                                $icon.removeClass('glyphicon-plus-sign').addClass('glyphicon-minus-sign');
+                                firstChild = false;
                             }
-                            firstChild = false;
-                            parentURI = app.parentDir.attr('uri');
-                            return $row.insertAfter(app.parentDir);
                         };
-                        addRow = addToParentDir;
                     }
 
                     for (var item in obj.data) {
@@ -346,7 +343,7 @@ function webSocketConnect() {
                                     }
                                 }
                                 var folderRow = "<tr uri=\"" + encodeURI(obj.data[item].dir) + "\" class=\"" + clazz + "\" data-parent=\"" + parentURI + "\">" +
-                                                "<td><button type='button' class='btn btn-link folder-expand'><span class=\"glyphicon glyphicon-plus-sign\"></span><span class=\"glyphicon glyphicon-folder-open\"></span></button></td>" +
+                                                "<td><button type='button' class='btn btn-link folder-expand'><span class=\"glyphicon glyphicon-plus-sign\"></span> <span class=\"glyphicon glyphicon-folder-open\"></span></button></td>" +
                                                 "<td colspan=\"2\"><a>" + basename(obj.data[item].dir) + "</a></td>" +
                                                 "<td></td><td></td></tr>";
                                 addRow(folderRow);
@@ -442,6 +439,10 @@ function webSocketConnect() {
                                     var $row = $target.closest('tr')
                                     if($target.hasClass("folder-expand") || $target.parent().hasClass("folder-expand")) {
                                         app.parentDir = $row;
+                                        var $button = $row.find('td:first .folder-expand');
+                                        var $icon = $row.find('td:first .glyphicon-plus-sign');
+                                        $button.removeClass('folder-expand').addClass('folder-collapse');
+                                        $icon.removeClass('glyphicon-plus-sign').addClass('glyphicon-minus-sign');
                                         socket.send('MPD_API_GET_BROWSE,'+pagination+','+(browsepath ? decodeURI(browsepath) : "/"));
                                     }
                                     else if($target.hasClass("folder-collapse") || $target.parent().hasClass("folder-collapse")) {
@@ -449,6 +450,8 @@ function webSocketConnect() {
                                         var $children = $("#salamisandwich > tbody").find("tr[data-parent='" + $row.attr("uri") + "']");
                                         $children.remove();
                                         // then cleanup "nested state"
+                                        $row.find('.glyphicon-minus-sign').removeClass('glyphicon-minus-sign').addClass('glyphicon-plus-sign');
+                                        $row.find('.folder-collapse').removeClass('folder-collapse').addClass('folder-expand');
                                         app.parentDir = null;
                                     } else {
                                         // click outside the expand/collapse button navigates to dir
